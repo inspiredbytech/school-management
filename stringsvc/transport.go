@@ -25,7 +25,7 @@ func MakeHandler(svc StringService, logger kitlog.Logger) http.Handler {
 		opts...,
 	)
 
-	strcount := makeUppercaseEndpoint(svc)
+	strcount := makeCountEndpoint(svc)
 
 	strcountHandler := kithttp.NewServer(
 		strcount,
@@ -37,8 +37,10 @@ func MakeHandler(svc StringService, logger kitlog.Logger) http.Handler {
 	r := mux.NewRouter()
 	//r.Handle("/api/v1/users", upperCaseHandler).Methods("GET")
 	//r.Handle("/api/v1/users", createHandler).Methods("POST")
-	r.Handle("/api/v1/string/{s}", uppercaseHandler).Methods("GET")
-	r.Handle("/api/v1/string/count/{s}", strcountHandler).Methods("GET")
+	r.Handle("/api/v1/string", uppercaseHandler).Methods("GET")
+	r.Handle("/api/v1/string", uppercaseHandler).Methods("POST")
+	r.Handle("/api/v1/string/upper", uppercaseHandler).Methods("POST")
+	r.Handle("/api/v1/string/count", strcountHandler).Methods("POST")
 	//r.Handle("/api/v1/users/{s}", updateHandler).Methods("PUT")
 	return r
 }
