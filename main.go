@@ -1,210 +1,141 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
+	"flag"
+	"sync"
+
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
+	"syscall"
 	"time"
 
-	epostgre "github.com/fergusstrange/embedded-postgres"
-	"github.com/jmoiron/sqlx"
-	"golang.org/x/crypto/bcrypt"
+	stringsvc "schoolmgt/stringsvc"
+
+	"schoolmgt/health"
+
+	"github.com/bnelz/gokit-base/config"
+	"github.com/go-kit/kit/log"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-type person struct {
-	FirstName string
-	LastName  string
+// serializedLogger is our "global" application logger
+type serializedLogger struct {
+	mtx sync.Mutex
+	log.Logger
 }
+
+// aConfig is the application configuration object
+var aConfig *config.Config
+var defaultPort int = 8080
 
 func main() {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
+	//c := config.Init()
+	//setConfig(c)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	// HTTP listener configuration
+	var (
+		port     = defaultPort //TODO: Make this conditional: c.Env.HTTPPort
+		httpAddr = flag.String("http.addr", ":"+fmt.Sprint(port), "HTTP Listen Address")
+	)
 
-	go func() {
-		oscall := <-c
-		log.Printf("system call:%+v", oscall)
-		cancel()
-	}()
+	flag.Parse()
 
-	if err := serve(ctx); err != nil {
-		log.Printf("failed to serve:+%v\n", err)
-	}
+	// Create and configure the logger
+	var logger log.Logger
+	logger = log.NewLogfmtLogger(os.Stderr)
+	//logger = hb.NewHerbertFormatLogger(logger, c.Env.LogPath, c.LogLevel())
+	logger = &serializedLogger{Logger: logger}
+	/*logger = log.With(logger,
+		"context_environment", c.Env.ApplicationEnvironment,
+		"timestamp", log.DefaultTimestampUTC,
+	)*/
 
-}
+	// Repository initialization
+	/*var (
+		userRepo users.Repository
+	)
 
-func serve(ctx context.Context) (err error) {
-	postgres := epostgre.NewDatabase()
-	err = postgres.Start()
+	fieldKeys := []string{"method"}
 
-	db, err := sqlx.Connect("postgres", "host=localhost port=5432 user=postgres password=postgres dbname=postgres sslmode=disable")
-	if err != nil {
-		log.Fatal("Error starting embedded postgresql ", err)
-		return
-	}
+	userRepo = inmemory.NewInMemUserRepository()
+
+	// Initialize the users service and wrap it with our middlewares
+	var us users.Service
+	us = users.NewService(userRepo)
+	us = users.NewLoggingService(log.With(logger, "context_component", "users"), us)
+	us = users.NewInstrumentingService(
+		kitprometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: "api",
+			Subsystem: "user_service",
+			Name:      "request_count",
+			Help:      "Number of requests received.",
+		}, fieldKeys),
+		kitprometheus.NewSummaryFrom(stdprometheus.SummaryOpts{
+			Namespace: "api",
+			Subsystem: "user_service",
+			Name:      "request_latency_microseconds",
+			Help:      "Total duration of requests in microseconds.",
+		}, fieldKeys),
+		us,
+	)*/
+
+	// Build and initialize our application HTTP handlers and error channels
+	httpLogger := log.With(logger, "context_component", "http")
 	mux := http.NewServeMux()
-	mux.Handle("/", http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintf(w, "okay")
-		},
-	))
-	mux.HandleFunc("/school", GetSchool(db))
-	mux.HandleFunc("/setup-school", SetupSchool(db))
 
-	srv := &http.Server{
-		Addr:    ":8080",
-		Handler: mux,
+	//mux.Handle("/api/v1/users", users.MakeHandler(us, httpLogger))
+	//mux.Handle("/api/v1/users/", users.MakeHandler(us, httpLogger))
+	mux.Handle("/api/v1/health", health.MakeHandler(httpLogger))
+
+	var strSvc stringsvc.StringService
+	strSvc = stringsvc.NewService()
+	mux.Handle("/api/v1/string", stringsvc.MakeHandler(strSvc, httpLogger))
+	mux.Handle("/api/v1/string/", stringsvc.MakeHandler(strSvc, httpLogger))
+
+	http.Handle("/", accessControl(mux))
+	http.Handle("/metrics", promhttp.Handler())
+
+	srv := http.Server{
+		WriteTimeout: 300 * time.Second,
+		ReadTimeout:  300 * time.Second,
+		Addr:         *httpAddr,
 	}
 
+	// Define the atreides logging channels
+	errs := make(chan error, 2)
 	go func() {
-		if err = srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("listen:%+s\n", err)
-		}
+		logger.Log("transport", "http", "address", *httpAddr, "message", "listening")
+		errs <- srv.ListenAndServe()
+	}()
+	go func() {
+		c := make(chan os.Signal)
+		signal.Notify(c, syscall.SIGINT)
+		errs <- fmt.Errorf("%s", <-c)
 	}()
 
-	log.Printf("server started")
-
-	<-ctx.Done()
-	err = postgres.Stop()
-	if err != nil {
-		log.Fatal("Error stopping embedded postgresql ", err)
-	}
-	log.Printf("server stopped")
-
-	ctxShutDown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer func() {
-		cancel()
-	}()
-
-	if err = srv.Shutdown(ctxShutDown); err != nil {
-		log.Fatalf("server Shutdown Failed:%+s", err)
-	}
-
-	log.Printf("server exited properly")
-
-	if err == http.ErrServerClosed {
-		err = nil
-	}
-
-	return
+	logger.Log("terminated", <-errs)
 }
 
-func encode(w http.ResponseWriter, r *http.Request) {
-	p1 := person{
-		FirstName: "Mahesh",
-		LastName:  "Patil",
-	}
-
-	err := json.NewEncoder(w).Encode(p1)
-	if err != nil {
-		log.Println(err)
-	}
+func setConfig(c *config.Config) {
+	aConfig = c
 }
 
-func decode(w http.ResponseWriter, r *http.Request) {
-	var p1 person
+func accessControl(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type")
 
-	err := json.NewDecoder(r.Body).Decode(&p1)
-	if err != nil {
-		log.Println(err)
-	}
-	log.Println("Decoded: ", p1)
-}
-
-func hash(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query()
-	password, present := query["password"]
-	if !present || len(password) == 0 {
-		w.WriteHeader(500)
-		w.Write([]byte("password not present"))
-		log.Println("password not present")
-		return
-	}
-
-	hashbytes, err := bcrypt.GenerateFromPassword([]byte(password[0]), bcrypt.DefaultCost)
-	if err != nil {
-		w.WriteHeader(500)
-		w.Write([]byte("hashing failed"))
-		log.Println(err)
-		return
-	} else {
-		w.WriteHeader(200)
-		w.Write([]byte(strings.Join(password, ",")))
-		w.Write([]byte(string("\n")))
-		w.Write([]byte(string(hashbytes)))
-	}
-	compare, present1 := query["compare"]
-	if present1 && len(password) > 0 {
-		err = bcrypt.CompareHashAndPassword(hashbytes, []byte(compare[0]))
-		if err != nil {
-			w.Write([]byte(string("\n")))
-			w.Write([]byte("Passwords do not match"))
-		} else {
-			w.Write([]byte(string("\n")))
-			w.Write([]byte("Passwords match"))
-		}
-	}
-
-}
-
-type School struct {
-	ID          int64  `json:"id"`
-	Name        string `json:"name"`
-	Country     string `json:"country"`
-	Established string `json:"establishedDate"`
-}
-
-func GetSchool(db *sqlx.DB) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if schoolName := r.URL.Query().Get("name"); schoolName != "" {
-
-			schools := make([]School, 0)
-			if err := db.Select(&schools, "SELECT * FROM school WHERE name = $1", schoolName); err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-
-			jsonPayload, err := json.Marshal(schools)
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-
-			if _, err := w.Write(jsonPayload); err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-		}
-	}
-}
-func SetupSchool(db *sqlx.DB) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		schema := `CREATE TABLE school (
-			country text,
-			name text,
-			id integer);`
-
-		// execute a query on the server
-		result, err := db.Exec(schema)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			//return
-		} else {
-			if err := db.MustExec(`INSERT INTO school (id, name, country) values ($1, $2, $3)`, 1, "claras", "india"); err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			} else {
-				w.WriteHeader(200)
-				w.Write([]byte("success"))
-			}
-			log.Println(result)
+		if r.Method == "OPTIONS" {
+			return
 		}
 
-	}
+		h.ServeHTTP(w, r)
+	})
+}
+
+func stringService() {
+
 }
