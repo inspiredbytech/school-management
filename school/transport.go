@@ -30,6 +30,7 @@ func MakeHandler(svc Service, logger kitlog.Logger) http.Handler {
 	// Define all endpoints
 	create := makeCreateSchoolEndpoint(svc)
 	read := makeReadSchoolEndpoint(svc)
+	delete := makeDeleteSchoolEndpoint(svc)
 	//update := makeUpdateSchoolColorEndpoint(svc)
 	list := makeReadAllSchoolsEndpoint(svc)
 
@@ -47,6 +48,13 @@ func MakeHandler(svc Service, logger kitlog.Logger) http.Handler {
 		opts...,
 	)
 
+	deleteHandler := kithttp.NewServer(
+		delete,
+		decodeReadSchoolRequest,
+		encodeDeleteSchoolResponse,
+		opts...,
+	)
+
 	listHandler := kithttp.NewServer(
 		list,
 		decodeListSchoolsRequest,
@@ -58,6 +66,7 @@ func MakeHandler(svc Service, logger kitlog.Logger) http.Handler {
 	r.Handle("/api/v1/schools", listHandler).Methods("GET")
 	r.Handle("/api/v1/schools", createHandler).Methods("POST")
 	r.Handle("/api/v1/schools/{id}", readHandler).Methods("GET")
+	r.Handle("/api/v1/schools/{id}", deleteHandler).Methods("DELETE")
 	//r.Handle("/api/v1/schools/{id}", updateHandler).Methods("PUT")
 
 	return r
@@ -113,6 +122,16 @@ func encodeReadSchoolResponse(ctx context.Context, w http.ResponseWriter, respon
 	}
 
 	res := response.(schoolReadResponse)
+	return encodeResponse(ctx, w, res)
+}
+
+func encodeDeleteSchoolResponse(ctx context.Context, w http.ResponseWriter, response interface{}) error {
+	if e, ok := response.(errorer); ok && e.error() != nil {
+		encodeError(ctx, e.error(), w)
+		return nil
+	}
+
+	res := response.(schoolDeleteResponse)
 	return encodeResponse(ctx, w, res)
 }
 

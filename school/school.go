@@ -31,4 +31,7 @@ type Repository interface {
 
 	// FindAll users in the repository
 	FindAll() []*School
+
+	// Delete user in the repo
+	Delete(int) (bool, error)
 }

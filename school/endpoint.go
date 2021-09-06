@@ -58,6 +58,19 @@ func makeReadSchoolEndpoint(s Service) endpoint.Endpoint {
 	}
 }
 
+type schoolDeleteResponse struct {
+	Status bool  `json:"status"`
+	Error  error `json:"error,omitempty"`
+}
+
+func makeDeleteSchoolEndpoint(s Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		req := request.(schoolReadRequest)
+		s, err := s.DeleteSchool(req.ID)
+		return schoolDeleteResponse{Status: s, Error: err}, nil
+	}
+}
+
 // schoolReadAllRequest represents an HTTP request from the client to get all schools
 type schoolReadAllRequest struct{}
 

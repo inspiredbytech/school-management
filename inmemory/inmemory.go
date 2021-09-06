@@ -5,7 +5,7 @@ import (
 
 	schools "schoolmgt/school"
 
-	errs "github.com/bnelz/gokit-base/errors"
+	errs "schoolmgt/errors"
 )
 
 // inMemUserRepository is an implementation of a school repository for storage in local memory
@@ -38,7 +38,7 @@ func (ir *inMemUserRepository) Find(id int) (*schools.School, error) {
 	ir.mtx.RUnlock()
 
 	if u == nil {
-		return nil, errs.ErrUserNotFound
+		return nil, errs.ErrSchoolNotFound
 	}
 	return u, nil
 }
@@ -52,4 +52,16 @@ func (ir *inMemUserRepository) FindAll() []*schools.School {
 	}
 	ir.mtx.RUnlock()
 	return allUsers
+}
+
+func (ir *inMemUserRepository) Delete(id int) (bool, error) {
+	ir.mtx.Lock()
+	_, ok := ir.schools[id]
+	if ok {
+		delete(ir.schools, id)
+	} else {
+		return false, errs.ErrSchoolNotFound
+	}
+	ir.mtx.Unlock()
+	return true, nil
 }
