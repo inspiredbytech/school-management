@@ -11,9 +11,12 @@ import (
 	"syscall"
 	"time"
 
+	schools "schoolmgt/school"
 	stringsvc "schoolmgt/stringsvc"
 
 	"schoolmgt/health"
+
+	"schoolmgt/inmemory"
 
 	"github.com/bnelz/gokit-base/config"
 	"github.com/go-kit/kit/log"
@@ -52,6 +55,14 @@ func main() {
 		"timestamp", log.DefaultTimestampUTC,
 	)*/
 
+	var (
+		schoolRepo schools.Repository
+	)
+	//fieldKeys := []string{"method"}
+	schoolRepo = inmemory.NewInMemUserRepository()
+
+	var ssvc schools.Service
+	ssvc = schools.NewService(schoolRepo)
 	// Repository initialization
 	/*var (
 		userRepo users.Repository
@@ -85,6 +96,8 @@ func main() {
 	httpLogger := log.With(logger, "context_component", "http")
 	mux := http.NewServeMux()
 
+	mux.Handle("/api/v1/schools", schools.MakeHandler(ssvc, httpLogger))
+	mux.Handle("/api/v1/schools/", schools.MakeHandler(ssvc, httpLogger))
 	//mux.Handle("/api/v1/users", users.MakeHandler(us, httpLogger))
 	//mux.Handle("/api/v1/users/", users.MakeHandler(us, httpLogger))
 	mux.Handle("/api/v1/health", health.MakeHandler(httpLogger))
