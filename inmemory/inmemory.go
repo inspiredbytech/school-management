@@ -31,16 +31,30 @@ func (ir *inMemUserRepository) Store(school *schools.School) error {
 	return nil
 }
 
+// Updates a school into the local school map
+func (ir *inMemUserRepository) Update(school *schools.School) error {
+	ir.mtx.Lock()
+	var err error
+	_, ok := ir.schools[school.ID]
+	if ok {
+		ir.schools[school.ID] = school
+		err = nil
+	} else {
+		err = errs.ErrSchoolNotFound
+	}
+	ir.mtx.Unlock()
+	return err
+}
+
 // Find retrieves a single school from the repository
 func (ir *inMemUserRepository) Find(id int) (*schools.School, error) {
 	ir.mtx.RLock()
-	u := ir.schools[id]
+	s, ok := ir.schools[id]
 	ir.mtx.RUnlock()
-
-	if u == nil {
+	if !ok {
 		return nil, errs.ErrSchoolNotFound
 	}
-	return u, nil
+	return s, nil
 }
 
 // FindAll retrieves all schools from memory
@@ -59,9 +73,10 @@ func (ir *inMemUserRepository) Delete(id int) (bool, error) {
 	_, ok := ir.schools[id]
 	if ok {
 		delete(ir.schools, id)
+		ir.mtx.Unlock()
 	} else {
+		ir.mtx.Unlock()
 		return false, errs.ErrSchoolNotFound
 	}
-	ir.mtx.Unlock()
 	return true, nil
 }

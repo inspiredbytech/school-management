@@ -58,3 +58,10 @@ func (_m *MockRepository) FindAll() []*School {
 func (_mr *_MockRepositoryRecorder) FindAll() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "FindAll")
 }
+
+func (_m *MockRepository) Delete(id int) (bool, error) {
+	ret := _m.ctrl.Call(_m, "Delete", id)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}

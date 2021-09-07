@@ -5,7 +5,8 @@ import (
 
 	"errors"
 
-	errs "github.com/bnelz/gokit-base/errors"
+	errs "schoolmgt/errors"
+
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )

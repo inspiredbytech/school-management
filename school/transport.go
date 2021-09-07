@@ -31,12 +31,12 @@ func MakeHandler(svc Service, logger kitlog.Logger) http.Handler {
 	create := makeCreateSchoolEndpoint(svc)
 	read := makeReadSchoolEndpoint(svc)
 	delete := makeDeleteSchoolEndpoint(svc)
-	//update := makeUpdateSchoolColorEndpoint(svc)
+	update := makeUpdateSchoolEndpoint(svc)
 	list := makeReadAllSchoolsEndpoint(svc)
 
 	createHandler := kithttp.NewServer(
 		create,
-		decodeCreateSchoolRequest,
+		decodeSchoolRequest,
 		encodeCreateSchoolResponse,
 		opts...,
 	)
@@ -44,10 +44,15 @@ func MakeHandler(svc Service, logger kitlog.Logger) http.Handler {
 	readHandler := kithttp.NewServer(
 		read,
 		decodeReadSchoolRequest,
-		encodeReadSchoolResponse,
+		encodeSchoolResponse,
 		opts...,
 	)
-
+	updateHandler := kithttp.NewServer(
+		update,
+		decodeSchoolRequest,
+		encodeSchoolResponse,
+		opts...,
+	)
 	deleteHandler := kithttp.NewServer(
 		delete,
 		decodeReadSchoolRequest,
@@ -67,7 +72,7 @@ func MakeHandler(svc Service, logger kitlog.Logger) http.Handler {
 	r.Handle("/api/v1/schools", createHandler).Methods("POST")
 	r.Handle("/api/v1/schools/{id}", readHandler).Methods("GET")
 	r.Handle("/api/v1/schools/{id}", deleteHandler).Methods("DELETE")
-	//r.Handle("/api/v1/schools/{id}", updateHandler).Methods("PUT")
+	r.Handle("/api/v1/schools/{id}", updateHandler).Methods("PUT")
 
 	return r
 }
@@ -91,8 +96,8 @@ func encodeResponse(ctx context.Context, w http.ResponseWriter, response interfa
 	return err
 }
 
-func decodeCreateSchoolRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	var req schoolCreateRequest
+func decodeSchoolRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	var req schoolRequest
 	return decodeRequest(&req, r)
 }
 
@@ -115,13 +120,13 @@ func decodeReadSchoolRequest(_ context.Context, r *http.Request) (interface{}, e
 	return req, err
 }
 
-func encodeReadSchoolResponse(ctx context.Context, w http.ResponseWriter, response interface{}) error {
+func encodeSchoolResponse(ctx context.Context, w http.ResponseWriter, response interface{}) error {
 	if e, ok := response.(errorer); ok && e.error() != nil {
 		encodeError(ctx, e.error(), w)
 		return nil
 	}
 
-	res := response.(schoolReadResponse)
+	res := response.(schoolResponse)
 	return encodeResponse(ctx, w, res)
 }
 

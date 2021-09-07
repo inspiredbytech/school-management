@@ -34,7 +34,14 @@ func (svc *schoolService) CreateSchool(s School) (int, error) {
 }
 
 func (svc *schoolService) UpdateSchool(s School) (School, error) {
-	return School{}, nil
+	if s.ID < 0 {
+		return s, errs.ErrInvalidArgument
+	}
+	err := svc.schoolRepo.Update(&s)
+	if err != nil {
+		return s, err
+	}
+	return s, nil
 }
 func (svc *schoolService) DeleteSchool(id int) (bool, error) {
 	if id < 0 {
@@ -45,11 +52,13 @@ func (svc *schoolService) DeleteSchool(id int) (bool, error) {
 }
 func (svc *schoolService) GetSchools() []*School {
 	schools := svc.schoolRepo.FindAll()
-
 	return schools
 }
 
 func (svc *schoolService) GetSchool(id int) (School, error) {
 	school, err := svc.schoolRepo.Find(id)
+	if err != nil {
+		return School{}, err
+	}
 	return *school, err
 }

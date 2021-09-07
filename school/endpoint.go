@@ -6,8 +6,8 @@ import (
 	"github.com/go-kit/kit/endpoint"
 )
 
-// schoolCreateRequest represents an HTTP request from the client for school creation
-type schoolCreateRequest struct {
+// schoolRequest represents an HTTP request from the client for school creation
+type schoolRequest struct {
 	ID       int      `json:"id"`
 	Name     string   `json:"name"`
 	Country  string   `json:"country"`
@@ -28,11 +28,22 @@ func (r schoolCreateResponse) error() error { return r.Error }
 // makeCreateSchoolEndpoint generates a service endpoint for schools
 func makeCreateSchoolEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		req := request.(*schoolCreateRequest)
+		req := request.(*schoolRequest)
 
 		id, err := s.CreateSchool(*New(req.ID, req.Name, req.Country, req.City, req.Address, req.Contacts))
 
 		return schoolCreateResponse{ID: id, Error: err}, nil
+	}
+}
+
+// makeCreateSchoolEndpoint generates a service endpoint for schools
+func makeUpdateSchoolEndpoint(svc Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		req := request.(*schoolRequest)
+
+		school, err := svc.UpdateSchool(*New(req.ID, req.Name, req.Country, req.City, req.Address, req.Contacts))
+
+		return schoolResponse{School: school, Error: err}, nil
 	}
 }
 
@@ -41,20 +52,20 @@ type schoolReadRequest struct {
 	ID int `json:"id"`
 }
 
-// schoolReadResponse represents an HTTP response containing a school or the error when fetching
-type schoolReadResponse struct {
+// schoolResponse represents an HTTP response containing a school or the error when fetching
+type schoolResponse struct {
 	School School `json:"school,omitempty"`
 	Error  error  `json:"error,omitempty"`
 }
 
-// error is the schoolReadResponse errorer implementation
-func (r schoolReadResponse) error() error { return r.Error }
+// error is the schoolResponse errorer implementation
+func (r schoolResponse) error() error { return r.Error }
 
 func makeReadSchoolEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		req := request.(schoolReadRequest)
 		u, err := s.GetSchool(req.ID)
-		return schoolReadResponse{School: u, Error: err}, nil
+		return schoolResponse{School: u, Error: err}, nil
 	}
 }
 
