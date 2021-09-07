@@ -18,10 +18,14 @@ mockgen -source=school/service.go -destination school/service_mock.go -package s
 ```
 
 2. Test and run
-
+Using go
 ```
 go test -v ./school
 go run .
+```
+Using skaffold
+```
+skaffold dev --port-forward
 ```
 
 # Services
