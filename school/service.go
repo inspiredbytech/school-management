@@ -26,11 +26,11 @@ func (svc *schoolService) CreateSchool(s School) (int, error) {
 	if s.ID < 0 {
 		return s.ID, errs.ErrInvalidArgument
 	}
-	err := svc.schoolRepo.Store(&s)
+	id, err := svc.schoolRepo.Store(&s)
 	if err != nil {
-		return s.ID, err
+		return 0, err
 	}
-	return s.ID, nil
+	return id, nil
 }
 
 func (svc *schoolService) UpdateSchool(s School) (School, error) {

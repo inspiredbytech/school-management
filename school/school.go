@@ -24,7 +24,7 @@ func New(id int, name string, country string, city string, address string, conta
 // (School) Repository is the set of behavior a repository, or "store", of schools must conform to.
 type Repository interface {
 	// Store a new user in the repository
-	Store(*School) error
+	Store(*School) (int, error)
 
 	// Store a new user in the repository
 	Update(*School) error

@@ -23,12 +23,12 @@ func NewInMemUserRepository() schools.Repository {
 }
 
 // Store inserts a school into the local school map
-func (ir *inMemUserRepository) Store(school *schools.School) error {
+func (ir *inMemUserRepository) Store(school *schools.School) (int, error) {
 	ir.mtx.Lock()
 	school.ID = len(ir.schools) + 1
 	ir.schools[school.ID] = school
 	ir.mtx.Unlock()
-	return nil
+	return school.ID, nil
 }
 
 // Updates a school into the local school map

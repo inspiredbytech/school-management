@@ -11,7 +11,16 @@ Inspired by: https://github.com/bnelz/gokit-base
 
 # Usage
 
+1. Generate mocks (for any changes to contracts)
 ```
+mockgen -source=school/school.go -destination school/school_mock.go -package school
+mockgen -source=school/service.go -destination school/service_mock.go -package school
+```
+
+2. Test and run
+
+```
+go test -v ./school
 go run .
 ```
 
