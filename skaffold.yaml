@@ -7,6 +7,8 @@ build:
   - image: school-management
     buildpacks:
       builder: gcr.io/buildpacks/builder:v1
+  local: 
+    push: false
 deploy:
   kubectl:
     manifests:
@@ -15,5 +17,5 @@ portForward:
 - resourceType: pod
   resourceName: school-management-svc
   namespace: default
-  port: 8081
+  port: 9000
   localPort: 9000 # *Optional*

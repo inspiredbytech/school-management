@@ -5,8 +5,8 @@ type School struct {
 	Name     string   `json:"name"`
 	Country  string   `json:"country"`
 	City     string   `json:"city"`
-	Address  string   `json:"Address"`
-	Contacts []string `json:"Contacts"`
+	Address  string   `json:"address"`
+	Contacts []string `json:"contacts"`
 }
 
 // New returns a reference to a new school instance

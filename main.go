@@ -31,7 +31,7 @@ type serializedLogger struct {
 
 // aConfig is the application configuration object
 var aConfig *config.Config
-var defaultPort int = 8081
+var defaultPort int = 9000
 
 func main() {
 	//c := config.Init()
