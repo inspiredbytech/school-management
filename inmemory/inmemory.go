@@ -25,7 +25,16 @@ func NewInMemUserRepository() schools.Repository {
 // Store inserts a school into the local school map
 func (ir *inMemUserRepository) Store(school *schools.School) (int, error) {
 	ir.mtx.Lock()
-	school.ID = len(ir.schools) + 1
+	maxId := len(ir.schools) + 1
+
+	for _, element := range ir.schools {
+		// element is the element from someSlice for where we are
+		if maxId <= element.ID {
+			maxId = element.ID + 1
+		}
+	}
+
+	school.ID = maxId
 	ir.schools[school.ID] = school
 	ir.mtx.Unlock()
 	return school.ID, nil

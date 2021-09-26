@@ -125,6 +125,7 @@ func encodeSchoolResponse(ctx context.Context, w http.ResponseWriter, response i
 		encodeError(ctx, e.error(), w)
 		return nil
 	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 	res := response.(schoolResponse)
 	return encodeResponse(ctx, w, res)
@@ -135,6 +136,7 @@ func encodeDeleteSchoolResponse(ctx context.Context, w http.ResponseWriter, resp
 		encodeError(ctx, e.error(), w)
 		return nil
 	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 	res := response.(schoolDeleteResponse)
 	return encodeResponse(ctx, w, res)
@@ -150,6 +152,7 @@ func encodeListSchoolsResponse(ctx context.Context, w http.ResponseWriter, respo
 		encodeError(ctx, e.error(), w)
 		return nil
 	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 	res := response.(schoolReadAllResponse)
 	return encodeResponse(ctx, w, res)
