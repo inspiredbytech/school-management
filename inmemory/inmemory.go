@@ -12,6 +12,7 @@ import (
 type inMemUserRepository struct {
 	mtx     *sync.RWMutex
 	schools map[int]*schools.School
+	nextId  int
 }
 
 // NewInMemUserRepository returns a new school repository for storage in local memory
@@ -25,16 +26,9 @@ func NewInMemUserRepository() schools.Repository {
 // Store inserts a school into the local school map
 func (ir *inMemUserRepository) Store(school *schools.School) (int, error) {
 	ir.mtx.Lock()
-	maxId := len(ir.schools) + 1
 
-	for _, element := range ir.schools {
-		// element is the element from someSlice for where we are
-		if maxId <= element.ID {
-			maxId = element.ID + 1
-		}
-	}
-
-	school.ID = maxId
+	ir.nextId = ir.nextId + 1
+	school.ID = ir.nextId
 	ir.schools[school.ID] = school
 	ir.mtx.Unlock()
 	return school.ID, nil
